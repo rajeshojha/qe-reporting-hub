@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E2E Test Completion Report</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .header {
+            border-bottom: 3px solid #28a745;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+        h1 {
+            color: #28a745;
+            margin: 0;
+            font-size: 24px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        .status-in-progress { background-color: #ffc107; color: #000; }
+        .status-passed { background-color: #28a745; color: white; }
+        .status-failed { background-color: #dc3545; color: white; }
+        .status-blocked { background-color: #6c757d; color: white; }
+        .status-skipped { background-color: #17a2b8; color: white; }
+        .info-section {
+            margin: 20px 0;
+        }
+        .info-row {
+            display: flex;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .info-label {
+            font-weight: bold;
+            width: 180px;
+            color: #555;
+        }
+        .info-value {
+            flex: 1;
+            color: #333;
+        }
+        .stats-container {
+            display: flex;
+            justify-content: space-between;
+            margin: 25px 0;
+            gap: 15px;
+        }
+        .stat-box {
+            flex: 1;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            border-left: 4px solid #28a745;
+        }
+        .stat-number {
+            font-size: 28px;
+            font-weight: bold;
+            color: #28a745;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            margin-top: 5px;
+        }
+        .pass-percentage {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 25px 0;
+        }
+        .pass-percentage-number {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .failed-tests {
+            background-color: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .failed-tests h3 {
+            margin-top: 0;
+            color: #721c24;
+        }
+        .failed-tests ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .summary {
+            background-color: #e7f3ff;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .summary h3 {
+            margin-top: 0;
+            color: #004085;
+        }
+        .report-link {
+            text-align: center;
+            margin: 25px 0;
+        }
+        .report-link a {
+            display: inline-block;
+            background-color: #007bff;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .report-link a:hover {
+            background-color: #0056b3;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #eee;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>✅ E2E Test Completion Report</h1>
+        <p style="margin: 5px 0 0 0; color: #666;">Automated Testing Notification</p>
+    </div>
+
+    <div th:class="'status-badge status-' + ${report.overallStatus != null ? report.overallStatus.toLowerCase() : 'unknown'}" 
+         th:text="${report.overallStatus}">Status</div>
+
+    <div class="pass-percentage" th:if="${report.passPercentage}">
+        <div style="font-size: 16px; opacity: 0.9;">Pass Rate</div>
+        <div class="pass-percentage-number" th:text="${#numbers.formatDecimal(report.passPercentage, 1, 1)} + '%'">0%</div>
+    </div>
+
+    <div class="info-section">
+        <div class="info-row">
+            <div class="info-label">Project:</div>
+            <div class="info-value" th:text="${report.projectName}">Project Name</div>
+        </div>
+        <div class="info-row" th:if="${report.riskStatus}">
+            <div class="info-label">Sprint/Version:</div>
+            <div class="info-value" th:text="${report.riskStatus}">Sprint Version</div>
+        </div>
+        <div class="info-row" th:if="${report.testEnvironment}">
+            <div class="info-label">Environment:</div>
+            <div class="info-value" th:text="${report.testEnvironment}">Environment</div>
+        </div>
+        <div class="info-row" th:if="${report.completionDate}">
+            <div class="info-label">Completion Date:</div>
+            <div class="info-value" th:text="${report.completionDate}">Completion Date</div>
+        </div>
+    </div>
+
+    <div class="stats-container">
+        <div class="stat-box">
+            <div class="stat-number" th:text="${report.totalTestCases}">0</div>
+            <div class="stat-label">Total Tests</div>
+        </div>
+        <div class="stat-box" th:if="${report.passedTestCases != null}">
+            <div class="stat-number" style="color: #28a745;" th:text="${report.passedTestCases}">0</div>
+            <div class="stat-label">Passed</div>
+        </div>
+        <div class="stat-box" th:if="${report.failedTestCases != null}">
+            <div class="stat-number" style="color: #dc3545;" th:text="${report.failedTestCases}">0</div>
+            <div class="stat-label">Failed</div>
+        </div>
+        <div class="stat-box" th:if="${report.blockedTestCases != null && report.blockedTestCases > 0}">
+            <div class="stat-number" style="color: #6c757d;" th:text="${report.blockedTestCases}">0</div>
+            <div class="stat-label">Blocked</div>
+        </div>
+    </div>
+
+    <div class="summary" th:if="${report.remarks}">
+        <h3>📊 Remarks</h3>
+        <p th:text="${report.remarks}" style="white-space: pre-line; margin: 0;">Remarks</p>
+    </div>
+
+    <div class="footer">
+        <p>This is an automated message from the E2E Testing Email Notifier System.</p>
+        <p>Please do not reply to this email.</p>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E2E Test Status Report</title>
+    <style>
+        body {
+            font-family: Bogle, sans-serif !important;
+            font-size: 15px;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            background: white;
+            padding: 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .summary-metric {
+            font-weight: bold;
+        }
+
+        .callouts ul {
+            margin: 5px 0;
+            padding-left: 20px;
+        }
+
+        .callouts ul:last-child {
+            margin-bottom: 0;
+        }
+
+        .callouts > div {
+            margin: 0;
+        }
+
+        .callouts > div:last-child ul {
+            margin-bottom: 0;
+        }
+
+        .defects-table, .testcases-table, .a11y-table, .a11y-metrics-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 5px 0;
+            font-size: 15px;
+            border: 1px solid #ddd;
+        }
+
+        .a11y-metrics-table {
+            max-width: 500px;
+            border: 1px solid #ddd;
+        }
+
+        .defects-table th, .testcases-table th, .a11y-table th, .a11y-metrics-table th {
+            background-color: #333333;
+            color: white;
+            padding: 10px;
+            text-align: left;
+            font-weight: bold;
+            border: 1px solid #ddd;
+        }
+
+        .defects-table td, .a11y-table td {
+            background-color: #ffc502;
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+        }
+
+        .defects-table tr:hover, .testcases-table tr:hover, .a11y-table tr:hover, .a11y-metrics-table tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .testcases-table td, .a11y-metrics-table td {
+            background-color: #ffffff;
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+        }
+
+        .priority-p1 {
+            background-color: #dc3545;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+
+        .priority-p2 {
+            background-color: darkorange;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+
+        .result-passed {
+            color: #16A34A;
+            font-weight: normal;
+        }
+
+        .result-failed {
+            color: #DC2626;
+            font-weight: normal;
+        }
+
+        .result-in-progress {
+            color: #ff8c00;
+            font-weight: normal;
+        }
+
+        .result-not-attempted {
+            color: #999999;
+            font-weight: normal;
+        }
+
+        .section-header {
+            font-weight: bold;
+            text-decoration: underline;
+            padding-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>Hi Everyone,</div>
+            <div>
+                <b style="text-decoration: underline;">Latest Update:</b>  E2E Testing is 
+                <span class="summary-metric" th:if="${report.riskStatus != null}">
+                    <span th:style="${#strings.equalsIgnoreCase(report.riskStatus, 'At High Risk') ? 'color: #dc3545; text-decoration: underline;' : (#strings.equalsIgnoreCase(report.riskStatus, 'At Medium Risk') ? 'color: #ff8c00; text-decoration: underline;' : 'color: #28a745; text-decoration: underline;')}" 
+                          th:text="${report.riskStatus}"></span></span><span th:if="${report.passRatePercentage != null}">, 
+                <span class="summary-metric">
+                    <span th:style="${#strings.equalsIgnoreCase(report.riskStatus, 'At High Risk') ? 'color: #dc3545;' : (#strings.equalsIgnoreCase(report.riskStatus, 'At Medium Risk') ? 'color: #ff8c00;' : 'color: #28a745;')}" 
+                          th:text="${report.passRatePercentage + '% Pass Rate'}"></span>
+                </span></span><span th:if="${report.attemptRatePercentage != null}">,
+                <span>
+                    <span style="font-weight: normal;" th:text="${report.attemptRatePercentage + '% Attempted'}"></span>
+                </span></span><span th:if="${report.criticalP1Count != null && report.criticalP1Count > 0}">, 
+                <span class="summary-metric">
+                    <span style="color: #dc3545;" th:text="${report.criticalP1Count + (report.criticalP1Count == 1 ? ' Critical P1' : ' Critical P1s')}"></span>
+                </span> require immediate resolution - <span style="background-color: #e1e1e1; padding: 0px; border-radius: 3px; color: #404040;">@<span th:text="${report.programManagerName}">Program Manager</span></span> – please help <span style="color:#dc3545; font-weight:bold; text-decoration: underline;">urgently</span> to drive <span th:if="${report.criticalP1Count == 1}">this <span th:text="${report.criticalP1Count}"></span> P1</span><span th:if="${report.criticalP1Count > 1}">these <span th:text="${report.criticalP1Count}"></span> P1s</span> to closure <b>at the earliest</b> working with Engineering STOs.</span>
+            </div>
+        </div>
+
+        <!-- Key Callouts Section -->
+        <div class="callouts" th:if="${report.keyCallouts != null && !report.keyCallouts.isEmpty()}">
+            <div class="section-header">Key Callout's:</div>
+            <div th:each="callout : ${report.keyCallouts}" th:utext="${callout}"></div>
+        </div>
+
+        <!-- Critical Defects Table -->
+        <div th:if="${report.defects != null && !report.defects.isEmpty()}">
+            <div class="section-header">Details: E2E Critical Defects</div>
+            <p th:if="${report.e2eJiraFilterLink != null && !report.e2eJiraFilterLink.isEmpty()}" 
+               style="margin: 0; font-size: 15px; font-family: 'Bogle', sans-serif;">
+                <a th:href="${report.e2eJiraFilterLink}" 
+                   th:text="${report.e2eJiraFilterLink}" 
+                   style="color: #0066cc; text-decoration: none;">Jira Filter</a>
+            </p>
+            <table class="defects-table">
+                <thead>
+                    <tr>
+                        <th>Key</th>
+                        <th>Priority</th>
+                        <th>Current Owner</th>
+                        <th>Manager</th>
+                        <th>Director</th>
+                        <th>SD/GD</th>
+                        <th>Planned Done Date</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="defect : ${report.defects}"
+                        th:with="jiraKey=${#strings.contains(defect.bugId, 'jira.walmart.com/browse/') ? #strings.substringAfter(defect.bugId, 'browse/') : defect.bugId},
+                                 jiraUrl=${#strings.contains(defect.bugId, 'jira.walmart.com/browse/') ? defect.bugId : 'https://jira.walmart.com/browse/' + defect.bugId}">
+                        <td>
+                            <a th:href="${jiraUrl}" 
+                               th:text="${jiraKey}" 
+                               style="color: #0066cc; text-decoration: none; font-weight: normal;">CEPG-360265</a>
+                        </td>
+                        <td>
+                            <span th:if="${defect.priority != null && #strings.equalsIgnoreCase(defect.priority, 'P1')}" class="priority-p1" th:text="${defect.priority}">P1</span>
+                            <span th:if="${defect.priority != null && #strings.equalsIgnoreCase(defect.priority, 'P2')}" class="priority-p2" th:text="${defect.priority}">P2</span>
+                            <span th:if="${defect.priority == null || (!#strings.equalsIgnoreCase(defect.priority, 'P1') && !#strings.equalsIgnoreCase(defect.priority, 'P2'))}" th:text="${defect.priority}">P3</span>
+                        </td>
+                        <td th:text="${defect.currentOwner}">Owner</td>
+                        <td th:text="${defect.manager}">Manager</td>
+                        <td th:text="${defect.director}">Director</td>
+                        <td th:text="${defect.sdGd}">SD/GD</td>
+                        <td th:style="${defect.plannedDoneDate == null || defect.plannedDoneDate.trim().isEmpty()} ? 'background-color: #dc3545; color: black; font-weight: normal;' : ''"
+                            th:text="${defect.plannedDoneDate == null || defect.plannedDoneDate.trim().isEmpty()} ? '??' : ${defect.plannedDoneDate}">09/02</td>
+                        <td th:text="${defect.status}">Backlog</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Accessibility Results Section -->
+        <div th:if="${report.accessibilityResults != null && !report.accessibilityResults.isEmpty()}">
+            <div class="section-header">Details: ADA Critical Defects</div>
+            <p th:if="${report.a11yJiraFilterLink != null && !report.a11yJiraFilterLink.isEmpty()}" 
+               style="margin: 0; font-size: 15px; font-family: 'Bogle', sans-serif;">
+                <a th:href="${report.a11yJiraFilterLink}" 
+                   th:text="${report.a11yJiraFilterLink}" 
+                   style="color: #0066cc; text-decoration: none;">Jira Filter</a>
+            </p>
+            <table class="defects-table">
+                <thead>
+                    <tr>
+                        <th>Key</th>
+                        <th>Priority</th>
+                        <th>Current Owner</th>
+                        <th>Manager</th>
+                        <th>Director</th>
+                        <th>SD/GD</th>
+                        <th>Planned Done Date</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="defect : ${report.defects}"
+                        th:with="jiraKey=${#strings.contains(defect.bugId, 'jira.walmart.com/browse/') ? #strings.substringAfter(defect.bugId, 'browse/') : defect.bugId},
+                                 jiraUrl=${#strings.contains(defect.bugId, 'jira.walmart.com/browse/') ? defect.bugId : 'https://jira.walmart.com/browse/' + defect.bugId}">
+                        <td>
+                            <a th:href="${jiraUrl}" 
+                               th:text="${jiraKey}" 
+                               style="color: #0066cc; text-decoration: none; font-weight: normal;">CEPG-360265</a>
+                        </td>
+                        <td>
+                            <span th:if="${defect.priority != null && #strings.equalsIgnoreCase(defect.priority, 'P1')}" class="priority-p1" th:text="${defect.priority}">P1</span>
+                            <span th:if="${defect.priority != null && #strings.equalsIgnoreCase(defect.priority, 'P2')}" class="priority-p2" th:text="${defect.priority}">P2</span>
+                            <span th:if="${defect.priority == null || (!#strings.equalsIgnoreCase(defect.priority, 'P1') && !#strings.equalsIgnoreCase(defect.priority, 'P2'))}" th:text="${defect.priority}">P3</span>
+                        </td>
+                        <td th:text="${defect.currentOwner}">Owner</td>
+                        <td th:text="${defect.manager}">Manager</td>
+                        <td th:text="${defect.director}">Director</td>
+                        <td th:text="${defect.sdGd}">SD/GD</td>
+                        <td th:style="${defect.plannedDoneDate == null || defect.plannedDoneDate.trim().isEmpty()} ? 'background-color: #dc3545; color: black; font-weight: normal;' : ''"
+                            th:text="${defect.plannedDoneDate == null || defect.plannedDoneDate.trim().isEmpty()} ? '??' : ${defect.plannedDoneDate}">09/02</td>
+                        <td th:text="${defect.status}">Backlog</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Teflon P1 Incidents Section -->
+        <div th:if="${report.accessibilityResults != null && !report.accessibilityResults.isEmpty()}">
+            <div class="section-header">Details: Teflon P1 Incidents</div>
+            <table class="defects-table">
+                <thead>
+                    <tr>
+                        <th>Key</th>
+                        <th>Priority</th>
+                        <th>Current Owner</th>
+                        <th>Manager</th>
+                        <th>Director</th>
+                        <th>SD/GD</th>
+                        <th>Planned Done Date</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="defect : ${report.defects}"
+                        th:with="jiraKey=${#strings.contains(defect.bugId, 'jira.walmart.com/browse/') ? #strings.substringAfter(defect.bugId, 'browse/') : defect.bugId},
+                                 jiraUrl=${#strings.contains(defect.bugId, 'jira.walmart.com/browse/') ? defect.bugId : 'https://jira.walmart.com/browse/' + defect.bugId}">
+                        <td>
+                            <a th:href="${jiraUrl}" 
+                               th:text="${jiraKey}" 
+                               style="color: #0066cc; text-decoration: none; font-weight: normal;">CEPG-360265</a>
+                        </td>
+                        <td>
+                            <span th:if="${defect.priority != null && #strings.equalsIgnoreCase(defect.priority, 'P1')}" class="priority-p1" th:text="${defect.priority}">P1</span>
+                            <span th:if="${defect.priority != null && #strings.equalsIgnoreCase(defect.priority, 'P2')}" class="priority-p2" th:text="${defect.priority}">P2</span>
+                            <span th:if="${defect.priority == null || (!#strings.equalsIgnoreCase(defect.priority, 'P1') && !#strings.equalsIgnoreCase(defect.priority, 'P2'))}" th:text="${defect.priority}">P3</span>
+                        </td>
+                        <td th:text="${defect.currentOwner}">Owner</td>
+                        <td th:text="${defect.manager}">Manager</td>
+                        <td th:text="${defect.director}">Director</td>
+                        <td th:text="${defect.sdGd}">SD/GD</td>
+                        <td th:style="${defect.plannedDoneDate == null || defect.plannedDoneDate.trim().isEmpty()} ? 'background-color: #dc3545; color: black; font-weight: normal;' : ''"
+                            th:text="${defect.plannedDoneDate == null || defect.plannedDoneDate.trim().isEmpty()} ? '??' : ${defect.plannedDoneDate}">09/02</td>
+                        <td th:text="${defect.status}">Backlog</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Test Cases Section -->
+        <div th:if="${report.testCases != null && !report.testCases.isEmpty()}">
+            <div class="section-header">Details E2E Golden Flows</div>
+            <p th:if="${report.e2eConfluenceLink != null && !report.e2eConfluenceLink.isEmpty()}" 
+               style="margin: 0; font-size: 15px; font-family: 'Bogle', sans-serif;">
+                <a th:href="${report.e2eConfluenceLink}" 
+                   th:text="${report.e2eConfluenceLink}" 
+                   style="color: #0066cc; text-decoration: none;">Confluence Link</a>
+            </p>
+            
+            <table class="testcases-table">
+                <thead>
+                    <tr>
+                        <th>TC ID</th>
+                        <th>Overall Status</th>
+                        <th>Android</th>
+                        <th>iOS</th>
+                        <th>dWeb</th>
+                        <th>mWeb</th>
+                        <th>Comments</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="tc : ${report.testCases}">
+                        <td th:text="${tc.tcId}">TC 1</td>
+                        <td th:switch="${tc.overallStatus != null ? #strings.toLowerCase(#strings.trim(tc.overallStatus)) : 'null'}">
+                            <span th:case="'pass'" class="result-passed">PASS</span>
+                            <span th:case="'passed'" class="result-passed">PASS</span>
+                            <span th:case="'fail'" class="result-failed">FAIL</span>
+                            <span th:case="'failed'" class="result-failed">FAIL</span>
+                            <span th:case="'in progress'" class="result-in-progress">IN PROGRESS</span>
+                            <span th:case="'not attempted'" class="result-not-attempted">Not Attempted</span>
+                            <span th:case="'n/a'" style="font-weight: normal;">N/A</span>
+                            <span th:case="'null'" class="result-not-attempted">-</span>
+                            <span th:case="*" th:text="${tc.overallStatus}">Unknown</span>
+                        </td>
+                        <td th:switch="${tc.android != null ? #strings.toLowerCase(#strings.trim(tc.android)) : 'null'}">
+                            <span th:case="'pass'" class="result-passed">PASS</span>
+                            <span th:case="'passed'" class="result-passed">PASS</span>
+                            <span th:case="'fail'" class="result-failed">FAIL</span>
+                            <span th:case="'failed'" class="result-failed">FAIL</span>
+                            <span th:case="'in progress'" class="result-in-progress">IN PROGRESS</span>
+                            <span th:case="'not attempted'" class="result-not-attempted">Not Attempted</span>
+                            <span th:case="'n/a'" style="font-weight: normal;">N/A</span>
+                            <span th:case="'null'" class="result-not-attempted">-</span>
+                            <span th:case="*" th:text="${tc.android}">Unknown</span>
+                        </td>
+                        <td th:switch="${tc.ios != null ? #strings.toLowerCase(#strings.trim(tc.ios)) : 'null'}">
+                            <span th:case="'pass'" class="result-passed">PASS</span>
+                            <span th:case="'passed'" class="result-passed">PASS</span>
+                            <span th:case="'fail'" class="result-failed">FAIL</span>
+                            <span th:case="'failed'" class="result-failed">FAIL</span>
+                            <span th:case="'in progress'" class="result-in-progress">IN PROGRESS</span>
+                            <span th:case="'not attempted'" class="result-not-attempted">Not Attempted</span>
+                            <span th:case="'n/a'" style="font-weight: normal;">N/A</span>
+                            <span th:case="'null'" class="result-not-attempted">-</span>
+                            <span th:case="*" th:text="${tc.ios}">Unknown</span>
+                        </td>
+                        <td th:switch="${tc.dWeb != null ? #strings.toLowerCase(#strings.trim(tc.dWeb)) : 'null'}">
+                            <span th:case="'pass'" class="result-passed">PASS</span>
+                            <span th:case="'passed'" class="result-passed">PASS</span>
+                            <span th:case="'fail'" class="result-failed">FAIL</span>
+                            <span th:case="'failed'" class="result-failed">FAIL</span>
+                            <span th:case="'in progress'" class="result-in-progress">IN PROGRESS</span>
+                            <span th:case="'not attempted'" class="result-not-attempted">Not Attempted</span>
+                            <span th:case="'n/a'" style="font-weight: normal;">N/A</span>
+                            <span th:case="'null'" class="result-not-attempted">-</span>
+                            <span th:case="*" th:text="${tc.dWeb}">Unknown</span>
+                        </td>
+                        <td th:switch="${tc.mWeb != null ? #strings.toLowerCase(#strings.trim(tc.mWeb)) : 'null'}">
+                            <span th:case="'pass'" class="result-passed">PASS</span>
+                            <span th:case="'passed'" class="result-passed">PASS</span>
+                            <span th:case="'fail'" class="result-failed">FAIL</span>
+                            <span th:case="'failed'" class="result-failed">FAIL</span>
+                            <span th:case="'in progress'" class="result-in-progress">IN PROGRESS</span>
+                            <span th:case="'not attempted'" class="result-not-attempted">Not Attempted</span>
+                            <span th:case="'n/a'" style="font-weight: normal;">N/A</span>
+                            <span th:case="'null'" class="result-not-attempted">-</span>
+                            <span th:case="*" th:text="${tc.mWeb}">Unknown</span>
+                        </td>
+                        <td th:text="${tc.comments}">-</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- A11Y Metrics Section -->
+        <div th:if="${report.a11yMetrics != null && !report.a11yMetrics.isEmpty()}">
+            <div class="section-header">Details A11Y</div>
+            <table class="a11y-metrics-table">
+                <thead>
+                    <tr>
+                        <th>Platform</th>
+                        <th>Attempted %</th>
+                        <th>Pass %</th>
+                        <th>Comments</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="metric : ${report.a11yMetrics}">
+                        <td th:text="${metric.platform}">Android</td>
+                        <td th:text="${#strings.equalsIgnoreCase(metric.attemptedPercentage, 'N/A') ? 'N/A' : metric.attemptedPercentage + '%'}">85%</td>
+                        <td th:text="${#strings.equalsIgnoreCase(metric.passPercentage, 'N/A') ? 'N/A' : metric.passPercentage + '%'}">90%</td>
+                        <td th:text="${metric.comments}">-</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Thanks Section -->
+        <div style="padding: 30px 0;" th:if="${report.thankYouNames != null && !report.thankYouNames.isEmpty()}">
+            <div>Thanks,</div>
+            <p style="margin:0; line-height: 1.6;">
+                <span th:text="${#strings.listJoin(report.thankYouNames, ', ')}"></span>
+            </p>
+        </div>
+
+        <!-- Footer -->
+        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #999; font-size: 12px;">
+            <p style="margin: 0;">Sent using Daily Status Form</p>
+        </div>
+    </div>
+</body>
+</html>
