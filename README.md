@@ -1,4 +1,4 @@
-# E2E Testing Email Notifier
+# QE Reporting Hub
 
 A Spring Boot web application that helps quality engineers send standardized end-to-end testing status and completion emails. This tool eliminates common issues with manually sent emails such as inconsistent formatting, font sizes, design, and recipient management.
 
